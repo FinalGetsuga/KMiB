@@ -1,0 +1,37 @@
+
+create table Test(
+    id int references Lice(id) on update cascade on delete set default,
+    shifra int,
+    tip varchar(10),
+    datum varchar(10),
+    rezultat varchar(20),
+    laboratorija varchar(20),
+    constraint Test_PK primary key (id,shifra),
+    CONSTRAINT tip_check check (tip IN ('pcr', 'seroloshki'))
+    );
+
+create table Vakcina(
+    shifra int primary key,
+    ime varchar(20),
+    proizvoditel varchar(30) default 'Pfizer'
+    );
+
+create table Vakcinacija(
+    id_lice int references Lice(id) on update cascade on delete cascade,
+    id_med_lice int references Med_lice(id) on update cascade on delete set default,
+    shifra_vakcina int references Vakcina(shifra) on update cascade on delete set default,
+    constraint Vakcinacija_PK primary key (id_lice,id_med_lice,shifra_vakcina)
+    );
+
+create table Vakcinacija_datum(
+    id_lice int,
+    id_med_lice int,
+    shifra_vakcina int,
+    datum date,
+    constraint Vakcinacija_datum_FK FOREIGN key (id_lice,id_med_lice,shifra_vakcina) references Vakcinacija(id_lice,id_med_lice,shifra_vakcina) on update cascade on delete set default,
+    constraint Vakcinacija_datum_PK primary key (id_lice,id_med_lice,shifra_vakcina,datum),
+    constraint date_check CHECK (datum > '2024-01-01')
+    );
+
+
+
