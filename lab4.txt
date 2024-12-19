@@ -1,0 +1,115 @@
+-- 1
+SELECT v.ime, v.prezime 
+FROM Shalterski_rabotnik sr
+join Vraboten v on sr.ID=v.ID
+JOIN Transakcija_shalter ts on v.ID = ts.ID_v 
+JOIN Smetka s on ts.MBR_k_s = s.MBR_k and ts.broj = s.broj 
+WHERE s.valuta = "EUR" and ts.suma > 1000 and ts.tip = "isplata"
+ORDER BY v.ime;
+
+
+-- 2
+SELECT k.ime, k.prezime
+FROM Klient k 
+join Smetka s on k.MBR_k = s.MBR_k 
+JOIN Transakcija_bankomat tb on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj 
+WHERE s.valuta = "USD" and tb.suma > 400
+ORDER BY k.ime;
+
+-- 3
+SELECT * 
+FROM (
+	SELECT s.* 
+	FROM Smetka s 
+	JOIN (
+		select * 
+		FROM Transakcija_bankomat   
+		WHERE datum >= "2021-01-01" and datum <= "2021-12-31" 
+	) tb on s.MBR_k = tb.MBR_k_s AND s.broj = tb.broj
+	intersect
+	SELECT s.* 
+	FROM Smetka s 
+	JOIN(
+		select * 
+		FROM Transakcija_shalter   
+		WHERE datum >= "2021-01-01" and datum <= "2021-12-31" and tip = "isplata" 
+	) ts on s.MBR_k = ts.MBR_k_s AND s.broj = ts.broj
+)
+WHERE valuta = "MKD"
+ORDER BY broj; 
+
+-- 4
+SELECT k.*
+FROM (
+	SELECT s.* 
+	FROM Smetka s 
+	JOIN Transakcija_bankomat tb on s.MBR_k = tb.MBR_k_s AND s.broj = tb.broj
+	EXCEPT 
+	SELECT s.* 
+	FROM Smetka s 
+	JOIN Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s AND s.broj = ts.broj
+) s
+JOIN Klient k on s.MBR_k = k.MBR_k 
+WHERE valuta = "EUR"
+ORDER BY k.ime; 
+
+-- 5
+SELECT ID_v, datum, MAX(broj_transakcii) 
+FROM (
+	SELECT ID_v, datum, COUNT(datum) as broj_transakcii 
+	FROM Transakcija_shalter 
+	GROUP BY ID_v, datum
+)
+GROUP BY ID_v, datum
+ORDER BY ID_v
+
+-- 6
+SELECT *
+FROM (
+    SELECT MBR_k, broj, AVG(suma_bankomat) prosechna_isplata_bankomat, AVG(suma_shalter) prosechna_isplata_shalter
+FROM (
+	SELECT s.*, ts.suma suma_shalter, null suma_bankomat   
+	FROM Smetka s 
+	JOIN Transakcija_shalter ts on s.broj = ts.broj
+	WHERE ts.datum >= "2021-01-01" and ts.datum <= "2021-12-31" and ts.tip = "isplata"
+	UNION 
+	SELECT s.*, null suma_shalter, tb.suma suma_bankomat
+	FROM Smetka s 
+	JOIN Transakcija_bankomat tb on s.broj = tb.broj
+	WHERE tb.datum >= "2021-01-01" and tb.datum <= "2021-12-31"
+)
+WHERE (valuta = "EUR" or valuta = "USD")
+GROUP BY broj
+ORDER BY broj
+)
+WHERE prosechna_isplata_bankomat is not null and prosechna_isplata_shalter is not null
+
+-- 6.2
+SELECT s.broj, AVG(ts.suma), AVG(tb.suma) 
+FROM Smetka s 
+	Left join Transakcija_bankomat tb on s.broj = tb.broj  and tb.datum LIKE "2021%"
+	Left join Transakcija_shalter ts on s.broj = ts.broj AND ts.datum LIKE "2021%" and ts.tip = "isplata"
+WHERE s.valuta = "EUR"  AND NOT (ts.suma IS NULL AND tb.suma IS NULL)
+GROUP BY s.broj
+ORDER BY s.broj 
+
+-- 7
+SELECT v.ID,v.ime,v.prezime, COUNT(v.ID) br_transakcii
+FROM (
+    SELECT s.*
+    FROM Smetka s
+    JOIN Transakcija_shalter ts on s.broj = ts.broj
+    EXCEPT
+    SELECT s.*
+    FROM Smetka s
+    JOIN Transakcija_bankomat ts on s.broj = ts.broj
+) s
+join Transakcija_shalter ts on s.broj = ts.broj
+join Vraboten v on ts.ID_v = v.ID
+GROUP BY v.ID
+
+-- 8
+SELECT v.ime,v.prezime 
+FROM Vraboten v
+join Transakcija_shalter ts on v.ID = ts.ID_v
+WHERE obrazovanie = "MSc" and plata > 50000
